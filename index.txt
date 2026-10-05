@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <title>AR Dog Playground</title>
+
+  <!-- A-Frame -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+
+  <!-- AR.js -->
+  <script src="https://cdn.jsdelivr.net/gh/AR-js-org/AR.js@3.4.2/aframe/build/aframe-ar.js"></script>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+
+    #info {
+      position: fixed;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 999;
+      background: rgba(0, 0, 0, 0.65);
+      color: white;
+      padding: 10px 18px;
+      border-radius: 20px;
+      font-size: 15px;
+      text-align: center;
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="info">
+    🔎 เล็งกล้องไปที่ Hiro Marker
+  </div>
+
+  <a-scene
+    embedded
+    vr-mode-ui="enabled: false"
+    renderer="antialias: true; alpha: true"
+    arjs="sourceType: webcam; debugUIEnabled: false;">
+
+    <!-- แสง -->
+    <a-light
+      type="ambient"
+      color="#ffffff"
+      intensity="1.5">
+    </a-light>
+
+    <a-light
+      type="directional"
+      color="#ffffff"
+      intensity="2"
+      position="2 5 3">
+    </a-light>
+
+
+    <!-- ================================================= -->
+    <!-- HIRO MARKER -->
+    <!-- ================================================= -->
+
+    <a-marker
+      preset="hiro"
+      id="hiroMarker">
+
+      <!-- สนามหญ้า -->
+      <a-plane
+        position="0 0 0"
+        rotation="-90 0 0"
+        width="5"
+        height="5"
+        color="#4CAF50"
+        material="roughness: 1;">
+      </a-plane>
+
+
+      <!--
+        โมเดลสุนัข
+
+        เปลี่ยน URL ตรงนี้เป็นไฟล์โมเดล .glb ของคุณได้
+      -->
+      <a-entity
+        id="dog"
+        position="0 0.05 0"
+        scale="0.5 0.5 0.5"
+        gltf-model="url(dog.glb)"
+        animation-mixer="clip: *; loop: repeat">
+
+      </a-entity>
+
+
+      <!-- เงาใต้ตัวหมา -->
+      <a-entity
+        id="dogShadow"
+        geometry="primitive: circle; radius: 0.35"
+        material="color: #333333; opacity: 0.25; transparent: true"
+        rotation="-90 0 0"
+        position="0 0.015 0">
+      </a-entity>
+
+
+      <!-- ต้นไม้เล็ก ๆ -->
+      <a-cylinder
+        position="-1.8 0.5 -1.5"
+        radius="0.12"
+        height="1"
+        color="#795548">
+      </a-cylinder>
+
+      <a-sphere
+        position="-1.8 1.25 -1.5"
+        radius="0.6"
+        color="#2E7D32">
+      </a-sphere>
+
+
+      <a-cylinder
+        position="1.7 0.5 -1.4"
+        radius="0.12"
+        height="1"
+        color="#795548">
+      </a-cylinder>
+
+      <a-sphere
+        position="1.7 1.25 -1.4"
+        radius="0.6"
+        color="#388E3C">
+      </a-sphere>
+
+    </a-marker>
+
+
+    <!-- กล้อง AR -->
+    <a-entity camera></a-entity>
+
+  </a-scene>
+
+
+  <script>
+
+    const marker = document.querySelector("#hiroMarker");
+    const dog = document.querySelector("#dog");
+    const shadow = document.querySelector("#dogShadow");
+    const info = document.querySelector("#info");
+
+
+    /*
+     * เมื่อพบ Hiro Marker
+     */
+    marker.addEventListener("markerFound", function () {
+
+      console.log("Hiro Marker Found!");
+
+      info.innerHTML = "🐶 พบเจ้าหมาแล้ว!";
+
+      /*
+       * เริ่มการวิ่ง
+       */
+      startDogRunning();
+    });
+
+
+    /*
+     * เมื่อ Marker หายจากกล้อง
+     */
+    marker.addEventListener("markerLost", function () {
+
+      console.log("Hiro Marker Lost!");
+
+      info.innerHTML = "🔎 เล็งกล้องไปที่ Hiro Marker";
+
+      stopDogRunning();
+    });
+
+
+    let running = false;
+    let animationFrame;
+
+
+    /*
+     * ให้หมาวิ่งเป็นวงรอบสนาม
+     */
+    function startDogRunning() {
+
+      if (running) return;
+
+      running = true;
+
+      const radiusX = 1.5;
+      const radiusZ = 1.2;
+
+      let startTime = performance.now();
+
+      function animate(time) {
+
+        if (!running) return;
+
+        const elapsed = (time - startTime) / 1000;
+
+        /*
+         * ความเร็วการวิ่ง
+         */
+        const speed = 0.8;
+
+        const angle = elapsed * speed;
+
+        const x = Math.cos(angle) * radiusX;
+        const z = Math.sin(angle) * radiusZ;
+
+        /*
+         * ตำแหน่งหมา
+         */
+        dog.object3D.position.x = x;
+        dog.object3D.position.z = z;
+
+
+        /*
+         * ให้หมาหันหน้าไปตามทิศทางการวิ่ง
+         */
+        const nextAngle = angle + 0.01;
+
+        const nextX = Math.cos(nextAngle) * radiusX;
+        const nextZ = Math.sin(nextAngle) * radiusZ;
+
+        const dx = nextX - x;
+        const dz = nextZ - z;
+
+        const rotation = Math.atan2(dx, dz);
+
+        dog.object3D.rotation.y = rotation;
+
+
+        /*
+         * ทำให้เงาวิ่งตามหมา
+         */
+        shadow.object3D.position.x = x;
+        shadow.object3D.position.z = z;
+
+
+        /*
+         * ทำให้ตัวหมากระเด้งเล็กน้อย
+         * เพื่อให้ดูเหมือนกำลังวิ่ง
+         */
+        const bounce = Math.abs(Math.sin(elapsed * 8)) * 0.05;
+
+        dog.object3D.position.y = 0.05 + bounce;
+
+
+        animationFrame = requestAnimationFrame(animate);
+      }
+
+      animationFrame = requestAnimationFrame(animate);
+    }
+
+
+    /*
+     * หยุดการวิ่ง
+     */
+    function stopDogRunning() {
+
+      running = false;
+
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
+    }
+
+  </script>
+
+</body>
+</html>
